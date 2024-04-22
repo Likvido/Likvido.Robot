@@ -6,6 +6,8 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <Import Project="$(ProjectDir)../version.props" />
+
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2023.3.0" />
       <PackageReference Include="Likvido.ApplicationInsights.Telemetry" Version="1.2.1" />
