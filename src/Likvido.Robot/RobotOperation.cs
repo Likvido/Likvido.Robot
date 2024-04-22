@@ -13,7 +13,7 @@ public static class RobotOperation
         string name, 
         Action<IConfiguration, IServiceCollection> configureServices,
         Action<ILoggingBuilder>? configureLogging = null)
-        where T : ILikvidoRobotEngine
+        where T : class, ILikvidoRobotEngine
     {
         var configuration = new ConfigurationBuilder()
             .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
@@ -34,6 +34,7 @@ public static class RobotOperation
                 configureLogging?.Invoke(builder);
             });
 
+        serviceCollection.AddScoped<T>();
         configureServices(configuration, serviceCollection);
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
@@ -53,7 +54,8 @@ public static class RobotOperation
             }
             catch (Exception e)
             {
-                var logger = services.GetRequiredService<ILogger>();
+                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogError(e, $"Job run failed. Robot - {name}");
                 throw;
             }
