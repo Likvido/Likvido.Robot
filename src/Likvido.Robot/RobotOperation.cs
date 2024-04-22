@@ -1,3 +1,4 @@
+using JetBrains.Annotations;
 using Likvido.ApplicationInsights.Telemetry;
 using Microsoft.ApplicationInsights;
 using Microsoft.ApplicationInsights.Extensibility;
@@ -7,10 +8,21 @@ using Microsoft.Extensions.Logging;
 
 namespace Likvido.Robot;
 
+[PublicAPI]
 public static class RobotOperation
 {
     public static async Task Run<T>(
-        string name, 
+        string robotName,
+        Action<IConfiguration, IServiceCollection> configureServices,
+        Action<ILoggingBuilder>? configureLogging = null)
+        where T : class, ILikvidoRobotEngine
+    {
+        await Run<T>(robotName, robotName, configureServices, configureLogging).ConfigureAwait(false);
+    }
+
+    public static async Task Run<T>(
+        string robotName,
+        string operationName,
         Action<IConfiguration, IServiceCollection> configureServices,
         Action<ILoggingBuilder>? configureLogging = null)
         where T : class, ILikvidoRobotEngine
@@ -22,8 +34,8 @@ public static class RobotOperation
             .Build();
 
         var serviceCollection = new ServiceCollection()
-            .AddSingleton<ITelemetryInitializer>(new ServiceNameInitializer(name))
-            .AddSingleton<ITelemetryInitializer>(new AvoidRequestSamplingTelemetryInitializer(name))
+            .AddSingleton<ITelemetryInitializer>(new ServiceNameInitializer(robotName))
+            .AddSingleton<ITelemetryInitializer>(new AvoidRequestSamplingTelemetryInitializer(operationName))
             .AddApplicationInsightsTelemetryWorkerService(configuration)
             .AddLogging(builder =>
             {
@@ -32,36 +44,48 @@ public static class RobotOperation
                 builder.AddConsole();
 
                 configureLogging?.Invoke(builder);
-            });
+            })
+            .AddScoped<T>();
 
-        serviceCollection.AddScoped<T>();
         configureServices(configuration, serviceCollection);
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
         using var scope = serviceProvider.CreateScope();
         var engine = scope.ServiceProvider.GetRequiredService<T>();
-        await RunOperationWithApplicationInsights(serviceProvider, name, engine.Run).ConfigureAwait(false);
+
+        var cancellationTokenSource = new CancellationTokenSource();
+        Console.CancelKeyPress += (_, _) => cancellationTokenSource.Cancel();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => cancellationTokenSource.Cancel();
+
+        await RunOperationWithApplicationInsights(serviceProvider, robotName, operationName, cancellationTokenSource.Token, engine.Run).ConfigureAwait(false);
     }
 
-    private static async Task RunOperationWithApplicationInsights(IServiceProvider services, string name, Func<Task> engineFunc)
+    private static async Task RunOperationWithApplicationInsights(
+        IServiceProvider services, string robotName, string operationName, CancellationToken cancellationToken, Func<CancellationToken, Task> engineFunc)
     {
         var func = async () =>
         {
             try
             {
-                await engineFunc().ConfigureAwait(false);
+                await engineFunc(cancellationToken).ConfigureAwait(false);
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
                 var loggerFactory = services.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
-                logger.LogError(e, $"Job run failed. Robot - {name}");
+                logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+            }
+            catch (Exception exception)
+            {
+                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+                var logger = loggerFactory.CreateLogger("RobotOperation");
+                logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
                 throw;
             }
         };
 
         var telemetryClient = services.GetRequiredService<TelemetryClient>();
-        await telemetryClient.ExecuteAsRequestAsync(new ExecuteAsRequestAsyncOptions(name, func)).ConfigureAwait(false);
+        await telemetryClient.ExecuteAsRequestAsync(new ExecuteAsRequestAsyncOptions(operationName, func)).ConfigureAwait(false);
     }
 }

@@ -5,5 +5,5 @@ namespace Likvido.Robot;
 [PublicAPI]
 public interface ILikvidoRobotEngine
 {
-    public Task Run();
+    public Task Run(CancellationToken cancellationToken);
 }

@@ -6,7 +6,7 @@ To create a robot, you need to implement a very simple interface:
 ```csharp
 public class MyRobotEngine : ILikvidoRobotEngine
 {
-    public Task Run()
+    public Task Run(CancellationToken cancellationToken)
     {
         // Your robot code here
     }
