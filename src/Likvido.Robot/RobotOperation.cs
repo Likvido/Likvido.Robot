@@ -13,18 +13,16 @@ public static class RobotOperation
 {
     public static async Task Run<T>(
         string robotName,
-        Action<IConfiguration, IServiceCollection> configureServices,
-        Action<ILoggingBuilder>? configureLogging = null)
+        Action<IConfiguration, IServiceCollection> configureServices)
         where T : class, ILikvidoRobotEngine
     {
-        await Run<T>(robotName, robotName, configureServices, configureLogging).ConfigureAwait(false);
+        await Run<T>(robotName, robotName, configureServices).ConfigureAwait(false);
     }
 
     public static async Task Run<T>(
         string robotName,
         string operationName,
-        Action<IConfiguration, IServiceCollection> configureServices,
-        Action<ILoggingBuilder>? configureLogging = null)
+        Action<IConfiguration, IServiceCollection> configureServices)
         where T : class, ILikvidoRobotEngine
     {
         var configuration = new ConfigurationBuilder()
@@ -42,8 +40,6 @@ public static class RobotOperation
                 builder.AddFilter("Azure", LogLevel.Warning);
                 builder.AddFilter("Microsoft", LogLevel.Warning);
                 builder.AddConsole();
-
-                configureLogging?.Invoke(builder);
             })
             .AddScoped<T>();
 
