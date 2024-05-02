@@ -24,19 +24,3 @@ await RobotOperation.Run<MyRobotEngine>(
     }
 );
 ```
-
-By default, it will configure logging to the console and to Application Insights. If you wish to augment or change the logging setup, we do provide an optional action you can pass to do this:
-
-```csharp
-await RobotOperation.Run<MyRobotEngine>(
-    "my-robot-name",
-    (configuration, services) =>
-    {
-        // Add your services here
-    },
-    (loggingBuilder) =>
-    {
-        // Add your logging setup here
-    }
-);
-```
