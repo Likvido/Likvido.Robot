@@ -82,6 +82,7 @@ public static class RobotOperation
         };
 
         var telemetryClient = services.GetRequiredService<TelemetryClient>();
-        await telemetryClient.ExecuteAsRequestAsync(new ExecuteAsRequestAsyncOptions(operationName, func)).ConfigureAwait(false);
+        await telemetryClient.ExecuteAsRequestAsync(new ExecuteAsRequestAsyncOptions(operationName, func) { FlushWait = null }).ConfigureAwait(false);
+        await telemetryClient.FlushAsync(cancellationToken).ConfigureAwait(false);
     }
 }
