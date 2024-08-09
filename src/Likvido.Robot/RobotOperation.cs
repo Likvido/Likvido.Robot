@@ -47,8 +47,18 @@ public static class RobotOperation
             .AddApplicationInsightsTelemetryWorkerService(configuration)
             .AddLogging(builder =>
             {
-                builder.AddFilter("Azure", LogLevel.Warning);
-                builder.AddFilter("Microsoft", LogLevel.Warning);
+                // add configuration first
+                builder.AddConfiguration(configuration.GetSection("Logging"));
+
+                // add default filters if not specified in configuration
+                if (!configuration.GetSection("Logging:LogLevel:Azure").Exists())
+                {
+                    builder.AddFilter("Azure", LogLevel.Warning);
+                }
+                if (!configuration.GetSection("Logging:LogLevel:Microsoft").Exists())
+                {
+                    builder.AddFilter("Microsoft", LogLevel.Warning);
+                }
                 builder.AddConsole();
             })
             .AddScoped<T>();
