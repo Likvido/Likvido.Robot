@@ -34,8 +34,7 @@ public static class RobotOperation
         if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
         {
             // make sure Application Insights configuration is present when running in a container
-            if (string.IsNullOrWhiteSpace(configuration["ApplicationInsights:InstrumentationKey"]) ||
-                string.IsNullOrWhiteSpace(configuration["ApplicationInsights:ConnectionString"]))
+            if (string.IsNullOrWhiteSpace(configuration["ApplicationInsights:ConnectionString"]))
             {
                 throw new InvalidOperationException("Application Insights configuration is missing. Please ensure the configuration is present in the appsettings.json file when running in a container.");
             }
