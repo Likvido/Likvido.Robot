@@ -1,3 +1,4 @@
+using Grafana.OpenTelemetry;
 using JetBrains.Annotations;
 using Likvido.ApplicationInsights.Telemetry;
 using Microsoft.ApplicationInsights;
@@ -5,6 +6,7 @@ using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
 
 namespace Likvido.Robot;
 
@@ -31,7 +33,8 @@ public static class RobotOperation
             .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true)
             .Build();
 
-        if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+        var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+        if (runningInContainer)
         {
             // make sure Application Insights configuration is present when running in a container
             if (string.IsNullOrWhiteSpace(configuration["ApplicationInsights:ConnectionString"]))
@@ -54,18 +57,35 @@ public static class RobotOperation
                 {
                     builder.AddFilter("Azure", LogLevel.Warning);
                 }
+
                 if (!configuration.GetSection("Logging:LogLevel:Microsoft").Exists())
                 {
                     builder.AddFilter("Microsoft", LogLevel.Warning);
                 }
+
                 builder.AddConsole();
+
+                if (runningInContainer)
+                {
+                    builder.AddOpenTelemetry(options =>
+                    {
+                        options.UseGrafana(settings =>
+                        {
+                            settings.ServiceName = robotName;
+                            settings.ExporterSettings = new AgentOtlpExporter
+                            {
+                                Protocol = OtlpExportProtocol.Grpc,
+                                Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
+                            };
+                        });
+                    });
+                }
             })
             .AddScoped<T>();
 
         configureServices(configuration, serviceCollection);
 
-        var serviceProvider = serviceCollection.BuildServiceProvider();
-
+        await using var serviceProvider = serviceCollection.BuildServiceProvider();
         using var scope = serviceProvider.CreateScope();
         var engine = scope.ServiceProvider.GetRequiredService<T>();
 
