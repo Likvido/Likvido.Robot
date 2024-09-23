@@ -78,6 +78,7 @@ public static class RobotOperation
                                 Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
                             };
                         });
+                        options.IncludeScopes = true;
                     });
                 }
             })
