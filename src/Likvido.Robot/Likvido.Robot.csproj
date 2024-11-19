@@ -9,7 +9,7 @@
     <Import Project="$(ProjectDir)../version.props" />
 
     <ItemGroup>
-      <PackageReference Include="Grafana.OpenTelemetry" Version="1.0.1" />
+      <PackageReference Include="Grafana.OpenTelemetry" Version="1.1.0" />
       <PackageReference Include="JetBrains.Annotations" Version="2024.3.0" />
       <PackageReference Include="Likvido.ApplicationInsights.Telemetry" Version="1.2.1" />
       <PackageReference Include="Microsoft.ApplicationInsights.WorkerService" Version="2.22.0" />
