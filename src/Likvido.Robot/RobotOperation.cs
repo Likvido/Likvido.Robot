@@ -1,8 +1,5 @@
 using Grafana.OpenTelemetry;
 using JetBrains.Annotations;
-using Likvido.ApplicationInsights.Telemetry;
-using Microsoft.ApplicationInsights;
-using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -34,19 +31,7 @@ public static class RobotOperation
             .Build();
 
         var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-        if (runningInContainer)
-        {
-            // make sure Application Insights configuration is present when running in a container
-            if (string.IsNullOrWhiteSpace(configuration["ApplicationInsights:ConnectionString"]))
-            {
-                throw new InvalidOperationException("Application Insights configuration is missing. Please ensure the configuration is present in the appsettings.json file when running in a container.");
-            }
-        }
-
         var serviceCollection = new ServiceCollection()
-            .AddSingleton<ITelemetryInitializer>(new ServiceNameInitializer(robotName))
-            .AddSingleton<ITelemetryInitializer>(new AvoidRequestSamplingTelemetryInitializer(operationName))
-            .AddApplicationInsightsTelemetryWorkerService(configuration)
             .AddLogging(builder =>
             {
                 // add configuration first
@@ -94,35 +79,28 @@ public static class RobotOperation
         Console.CancelKeyPress += (_, _) => cancellationTokenSource.Cancel();
         AppDomain.CurrentDomain.ProcessExit += (_, _) => cancellationTokenSource.Cancel();
 
-        await RunOperationWithApplicationInsights(serviceProvider, robotName, operationName, cancellationTokenSource.Token, engine.Run).ConfigureAwait(false);
+        await RunOperation(serviceProvider, robotName, operationName, engine.Run, cancellationTokenSource.Token).ConfigureAwait(false);
     }
 
-    private static async Task RunOperationWithApplicationInsights(
-        IServiceProvider services, string robotName, string operationName, CancellationToken cancellationToken, Func<CancellationToken, Task> engineFunc)
+    private static async Task RunOperation(IServiceProvider services, string robotName, string operationName,
+        Func<CancellationToken, Task> engineFunc, CancellationToken cancellationToken)
     {
-        var func = async () =>
+        try
         {
-            try
-            {
-                await engineFunc(cancellationToken).ConfigureAwait(false);
-            }
-            catch (OperationCanceledException)
-            {
-                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("RobotOperation");
-                logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
-            }
-            catch (Exception exception)
-            {
-                var loggerFactory = services.GetRequiredService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("RobotOperation");
-                logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
-                throw;
-            }
-        };
-
-        var telemetryClient = services.GetRequiredService<TelemetryClient>();
-        await telemetryClient.ExecuteAsRequestAsync(new ExecuteAsRequestAsyncOptions(operationName, func) { FlushWait = null }).ConfigureAwait(false);
-        await telemetryClient.FlushAsync(cancellationToken).ConfigureAwait(false);
+            await engineFunc(cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("RobotOperation");
+            logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+        }
+        catch (Exception exception)
+        {
+            var loggerFactory = services.GetRequiredService<ILoggerFactory>();
+            var logger = loggerFactory.CreateLogger("RobotOperation");
+            logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+            throw;
+        }
     }
 }
