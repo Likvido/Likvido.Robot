@@ -62,6 +62,8 @@ public static class RobotOperation
                                 Protocol = OtlpExportProtocol.Grpc,
                                 Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
                             };
+
+                            settings.ResourceDetectors.Add(ResourceDetector.Container);
                         });
                         options.IncludeScopes = true;
                     });
