@@ -57,6 +57,7 @@ public static class RobotOperation
                         options.UseGrafana(settings =>
                         {
                             settings.ServiceName = robotName;
+                            settings.ResourceAttributes.Add("k8s.pod.name", Environment.GetEnvironmentVariable("HOSTNAME"));
                             settings.ExporterSettings = new AgentOtlpExporter
                             {
                                 Protocol = OtlpExportProtocol.Grpc,
