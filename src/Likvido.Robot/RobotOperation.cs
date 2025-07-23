@@ -26,59 +26,52 @@ public static class RobotOperation
         Action<IConfiguration, IServiceCollection> configureServices)
         where T : class, ILikvidoRobotEngine
     {
-        var host = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((context, config) =>
+        var builder = Host.CreateApplicationBuilder();
+        builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+              .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+              .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
+
+        builder.Services.AddSingleton(new RobotMetadata(robotName, operationName));
+        builder.Services.AddScoped<T>();
+        builder.Services.AddHostedService<RobotHostedService<T>>();
+
+        // Register the robot passed services configuration
+        configureServices(builder.Configuration, builder.Services);
+
+        var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
+        builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
+
+        if (!builder.Configuration.GetSection("Logging:LogLevel:Azure").Exists())
+        {
+            builder.Logging.AddFilter("Azure", LogLevel.Warning);
+        }
+
+        if (!builder.Configuration.GetSection("Logging:LogLevel:Microsoft").Exists())
+        {
+            builder.Logging.AddFilter("Microsoft", LogLevel.Warning);
+        }
+
+        builder.Logging.AddConsole();
+
+        if (runningInContainer)
+        {
+            builder.Logging.AddOpenTelemetry(options =>
             {
-                config.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-                      .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
-                      .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
-            })
-            .ConfigureServices((context, services) =>
-            {
-                services.AddSingleton(new RobotMetadata(robotName, operationName));
-                services.AddScoped<T>();
-                services.AddHostedService<RobotHostedService<T>>();
-                configureServices(context.Configuration, services);
-            })
-            .ConfigureLogging((context, logging) =>
-            {
-                var configuration = context.Configuration;
-                var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
-
-                logging.AddConfiguration(configuration.GetSection("Logging"));
-
-                if (!configuration.GetSection("Logging:LogLevel:Azure").Exists())
+                options.UseGrafana(settings =>
                 {
-                    logging.AddFilter("Azure", LogLevel.Warning);
-                }
-
-                if (!configuration.GetSection("Logging:LogLevel:Microsoft").Exists())
-                {
-                    logging.AddFilter("Microsoft", LogLevel.Warning);
-                }
-
-                logging.AddConsole();
-
-                if (runningInContainer)
-                {
-                    logging.AddOpenTelemetry(options =>
+                    settings.ServiceName = robotName;
+                    settings.ResourceAttributes.Add("k8s.pod.name", Environment.GetEnvironmentVariable("HOSTNAME"));
+                    settings.ExporterSettings = new AgentOtlpExporter
                     {
-                        options.UseGrafana(settings =>
-                        {
-                            settings.ServiceName = robotName;
-                            settings.ResourceAttributes.Add("k8s.pod.name", Environment.GetEnvironmentVariable("HOSTNAME"));
-                            settings.ExporterSettings = new AgentOtlpExporter
-                            {
-                                Protocol = OtlpExportProtocol.Grpc,
-                                Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
-                            };
-                        });
-                        options.IncludeScopes = true;
-                    });
-                }
-            })
-            .UseConsoleLifetime()
-            .Build();
+                        Protocol = OtlpExportProtocol.Grpc,
+                        Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
+                    };
+                });
+                options.IncludeScopes = true;
+            });
+        }
+
+        var host = builder.Build();
 
         // Log startup
         var logger = host.Services.GetRequiredService<ILogger<RobotHostedService<T>>>();
