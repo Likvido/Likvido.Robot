@@ -20,6 +20,7 @@ public static class RobotOperation
     {
         await Run<T>(robotName, robotName, configureServices).ConfigureAwait(false);
     }
+
     public static async Task Run<T>(
         string robotName,
         string operationName,
@@ -28,8 +29,8 @@ public static class RobotOperation
     {
         var builder = Host.CreateApplicationBuilder();
         builder.Configuration.AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
-              .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
-              .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
+            .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
 
         builder.Services.AddSingleton(new RobotMetadata(robotName, operationName));
         builder.Services.AddScoped<T>();
@@ -75,7 +76,8 @@ public static class RobotOperation
 
         // Log startup
         var logger = host.Services.GetRequiredService<ILogger<RobotHostedService<T>>>();
-        logger.LogInformation("Starting robot. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+        logger.LogInformation("Starting robot. Robot: {RobotName}. Operation: {OperationName}", robotName,
+            operationName);
 
         try
         {
@@ -84,17 +86,19 @@ public static class RobotOperation
         catch (OperationCanceledException)
         {
             // This is expected during shutdown
-            logger.LogInformation("Robot shutdown completed. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+            logger.LogInformation("Robot shutdown completed. Robot: {RobotName}. Operation: {OperationName}", robotName,
+                operationName);
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Robot failed. Robot: {RobotName}. Operation: {OperationName}", robotName, operationName);
+            logger.LogError(ex, "Robot failed. Robot: {RobotName}. Operation: {OperationName}", robotName,
+                operationName);
             throw;
         }
     }
 
     public class RobotHostedService<T> : BackgroundService
-    where T : ILikvidoRobotEngine
+        where T : ILikvidoRobotEngine
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly RobotMetadata _robotMetadata;
@@ -124,14 +128,16 @@ public static class RobotOperation
             {
                 var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
-                logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}", _robotMetadata.RobotName, _robotMetadata.OperationName);
+                logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
+                    _robotMetadata.RobotName, _robotMetadata.OperationName);
                 _lifeTime.StopApplication();
             }
             catch (Exception exception)
             {
                 var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
-                logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}", _robotMetadata.RobotName, _robotMetadata.OperationName);
+                logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
+                    _robotMetadata.RobotName, _robotMetadata.OperationName);
                 throw;
             }
         }
