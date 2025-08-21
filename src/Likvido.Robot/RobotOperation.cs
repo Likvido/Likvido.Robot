@@ -97,47 +97,37 @@ public static class RobotOperation
         }
     }
 
-    public class RobotHostedService<T> : BackgroundService
+    public class RobotHostedService<T>(
+        IServiceProvider serviceProvider,
+        IHostApplicationLifetime lifetime,
+        RobotMetadata robotMetadata)
+        : BackgroundService
         where T : ILikvidoRobotEngine
     {
-        private readonly IServiceProvider _serviceProvider;
-        private readonly RobotMetadata _robotMetadata;
-        private readonly IHostApplicationLifetime _lifeTime;
-
-        public RobotHostedService(
-            IServiceProvider serviceProvider,
-            IHostApplicationLifetime lifetime,
-            RobotMetadata robotMetadata)
-        {
-            _robotMetadata = robotMetadata;
-            _serviceProvider = serviceProvider;
-            _lifeTime = lifetime;
-        }
-
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             try
             {
-                using var scope = _serviceProvider.CreateScope();
+                using var scope = serviceProvider.CreateScope();
                 var engine = scope.ServiceProvider.GetRequiredService<T>();
                 await engine.Run(stoppingToken);
                 // Stop after launching and finishing since BackgroundService will not finish itself
-                _lifeTime.StopApplication();
+                lifetime.StopApplication();
             }
             catch (OperationCanceledException)
             {
-                var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
-                    _robotMetadata.RobotName, _robotMetadata.OperationName);
-                _lifeTime.StopApplication();
+                    robotMetadata.RobotName, robotMetadata.OperationName);
+                lifetime.StopApplication();
             }
             catch (Exception exception)
             {
-                var loggerFactory = _serviceProvider.GetRequiredService<ILoggerFactory>();
+                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
-                    _robotMetadata.RobotName, _robotMetadata.OperationName);
+                    robotMetadata.RobotName, robotMetadata.OperationName);
                 throw;
             }
         }
