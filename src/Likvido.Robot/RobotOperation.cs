@@ -33,7 +33,7 @@ public static class RobotOperation
             .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
 
-        builder.Services.AddNullPrincipalProvider();
+        builder.Services.TryAddNullPrincipalProvider();
         builder.Services.AddSingleton(new RobotMetadata(robotName, operationName));
         builder.Services.AddScoped<T>();
         builder.Services.AddHostedService<RobotHostedService<T>>();
