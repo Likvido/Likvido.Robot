@@ -1,6 +1,7 @@
 using Grafana.OpenTelemetry;
 using JetBrains.Annotations;
 using Likvido.Identity;
+using Likvido.Metadata;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -12,8 +13,6 @@ namespace Likvido.Robot;
 [PublicAPI]
 public static class RobotOperation
 {
-    public record RobotMetadata(string RobotName, string OperationName);
-
     public static async Task Run<T>(
         string robotName,
         Action<IConfiguration, IServiceCollection> configureServices)
@@ -34,7 +33,7 @@ public static class RobotOperation
             .AddJsonFile("appsettings.Production.json", optional: true, reloadOnChange: true);
 
         builder.Services.TryAddNullPrincipalProvider();
-        builder.Services.AddSingleton(new RobotMetadata(robotName, operationName));
+        builder.Services.AddSingleton(new AppMetadata { AppName = robotName, OperationName = operationName });
         builder.Services.AddScoped<T>();
         builder.Services.AddHostedService<RobotHostedService<T>>();
 
@@ -102,7 +101,7 @@ public static class RobotOperation
     public class RobotHostedService<T>(
         IServiceProvider serviceProvider,
         IHostApplicationLifetime lifetime,
-        RobotMetadata robotMetadata)
+        AppMetadata appMetadata)
         : BackgroundService
         where T : ILikvidoRobotEngine
     {
@@ -121,7 +120,7 @@ public static class RobotOperation
                 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
-                    robotMetadata.RobotName, robotMetadata.OperationName);
+                    appMetadata.AppName, appMetadata.OperationName);
                 lifetime.StopApplication();
             }
             catch (Exception exception)
@@ -129,7 +128,7 @@ public static class RobotOperation
                 var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
                 var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
-                    robotMetadata.RobotName, robotMetadata.OperationName);
+                    appMetadata.AppName, appMetadata.OperationName);
                 throw;
             }
         }
