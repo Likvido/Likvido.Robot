@@ -101,7 +101,8 @@ public static class RobotOperation
     public class RobotHostedService<T>(
         IServiceProvider serviceProvider,
         IHostApplicationLifetime lifetime,
-        AppMetadata appMetadata)
+        AppMetadata appMetadata,
+        ILogger<RobotHostedService<T>> logger)
         : BackgroundService
         where T : ILikvidoRobotEngine
     {
@@ -117,16 +118,12 @@ public static class RobotOperation
             }
             catch (OperationCanceledException)
             {
-                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
                 lifetime.StopApplication();
             }
             catch (Exception exception)
             {
-                var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
-                var logger = loggerFactory.CreateLogger("RobotOperation");
                 logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
                 throw;
