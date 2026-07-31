@@ -1,12 +1,11 @@
-using Grafana.OpenTelemetry;
 using JetBrains.Annotations;
 using Likvido.Identity;
 using Likvido.Metadata;
+using Likvido.Telemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using OpenTelemetry.Exporter;
 
 namespace Likvido.Robot;
 
@@ -40,7 +39,6 @@ public static class RobotOperation
         // Register the robot passed services configuration
         configureServices(builder.Configuration, builder.Services);
 
-        var runningInContainer = Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true";
         builder.Logging.AddConfiguration(builder.Configuration.GetSection("Logging"));
 
         if (!builder.Configuration.GetSection("Logging:LogLevel:Azure").Exists())
@@ -55,23 +53,10 @@ public static class RobotOperation
 
         builder.Logging.AddConsole();
 
-        if (runningInContainer)
-        {
-            builder.Logging.AddOpenTelemetry(options =>
-            {
-                options.UseGrafana(settings =>
-                {
-                    settings.ServiceName = robotName;
-                    settings.ResourceAttributes.Add("k8s.pod.name", Environment.GetEnvironmentVariable("HOSTNAME"));
-                    settings.ExporterSettings = new AgentOtlpExporter
-                    {
-                        Protocol = OtlpExportProtocol.Grpc,
-                        Endpoint = new Uri("http://grafana-alloy-otlp.grafana-alloy.svc.cluster.local:4317")
-                    };
-                });
-                options.IncludeScopes = true;
-            });
-        }
+        // Ships logs to the cluster's Grafana Alloy collector, and a no-op anywhere that is not a
+        // deployed workload. See Likvido.Telemetry for how that is decided — and for why this used to
+        // key off DOTNET_RUNNING_IN_CONTAINER, which is true inside every GitHub Actions job too.
+        builder.Logging.AddLikvidoOtlpLogging(robotName);
 
         var host = builder.Build();
 
