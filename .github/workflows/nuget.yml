@@ -8,6 +8,12 @@ on:
       - src/version.props
       - .github/workflows/nuget.yml
 
+# The job checks out the repository and publishes to nuget.org with Trusted Publishing, so it needs
+# read access to the contents and permission to request an OIDC token for the token exchange.
+permissions:
+  contents: read
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -24,7 +30,7 @@ jobs:
           dotnet-version: 10.x
 
       - name: Publish NuGet
-        uses: likvido/action-nuget@v1
+        uses: likvido/action-nuget@v2
         with:
           project: src/Likvido.Robot/Likvido.Robot.csproj
-          nuget-key: ${{ secrets.NUGET_API_KEY }}
+          nuget-user: ${{ vars.NUGET_USER }}
