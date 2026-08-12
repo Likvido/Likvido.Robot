@@ -13,12 +13,12 @@
 
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
-      <PackageReference Include="Likvido.Identity" Version="2.0.0" />
-      <PackageReference Include="Likvido.Metadata" Version="1.0.1" />
+      <PackageReference Include="Likvido.Identity" Version="2.0.1" />
+      <PackageReference Include="Likvido.Metadata" Version="1.0.2" />
       <PackageReference Include="Likvido.Telemetry" Version="1.0.0" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.10" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.10" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.10" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.11" />
     </ItemGroup>
 
 </Project>
