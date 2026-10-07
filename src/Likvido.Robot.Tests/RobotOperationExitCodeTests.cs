@@ -79,10 +79,20 @@ public sealed class RobotOperationExitCodeTests : IDisposable
         _logs.Messages.ShouldContain(m => m.StartsWith("Robot stopped before its run finished"));
     }
 
+    [Fact]
+    public async Task A_host_that_fails_to_start_is_logged_before_the_exception_escapes()
+    {
+        await Should.ThrowAsync<InvalidOperationException>(
+            RunRobot<SucceedingEngine>(services => services.AddHostedService<FailsToStart>()));
+
+        _logs.Messages.ShouldContain(m => m.StartsWith("Robot failed"));
+    }
+
     private Task RunRobot<T>(Action<IServiceCollection>? configure = null) where T : class, ILikvidoRobotEngine =>
         RobotOperation.Run<T>("test-robot", (_, services) =>
         {
-            services.AddSingleton<ILoggerProvider>(_logs);
+            // Registered through a factory so the host disposes it, as it disposes the real OTLP provider
+            services.AddSingleton<ILoggerProvider>(_ => _logs);
             configure?.Invoke(services);
         });
 
@@ -129,6 +139,14 @@ public sealed class RobotOperationExitCodeTests : IDisposable
         }
     }
 
+    private sealed class FailsToStart : IHostedService
+    {
+        public Task StartAsync(CancellationToken cancellationToken) =>
+            throw new InvalidOperationException("The host could not start");
+
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+    }
+
     // Starting runs before any hosted service starts, so the robot's engine never gets to run
     private sealed class StopsDuringStartup(IHostApplicationLifetime lifetime) : IHostedLifecycleService
     {
@@ -145,9 +163,11 @@ public sealed class RobotOperationExitCodeTests : IDisposable
         public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
+    // Drops what is logged after the host disposes it, as the OTLP exporter does
     private sealed class CapturingLoggerProvider : ILoggerProvider
     {
         private readonly List<string> _messages = [];
+        private volatile bool _disposed;
 
         public IReadOnlyList<string> Messages
         {
@@ -162,9 +182,7 @@ public sealed class RobotOperationExitCodeTests : IDisposable
 
         public ILogger CreateLogger(string categoryName) => new CapturingLogger(this);
 
-        public void Dispose()
-        {
-        }
+        public void Dispose() => _disposed = true;
 
         private sealed class CapturingLogger(CapturingLoggerProvider provider) : ILogger
         {
@@ -175,6 +193,11 @@ public sealed class RobotOperationExitCodeTests : IDisposable
             public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception? exception,
                 Func<TState, Exception?, string> formatter)
             {
+                if (provider._disposed)
+                {
+                    return;
+                }
+
                 lock (provider._messages)
                 {
                     provider._messages.Add(formatter(state, exception));
