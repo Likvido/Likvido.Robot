@@ -53,8 +53,38 @@ public sealed class RobotOperationExitCodeTests : IDisposable
         _logs.Messages.ShouldContain(m => m.StartsWith("Job was cancelled"));
     }
 
-    private Task RunRobot<T>() where T : class, ILikvidoRobotEngine =>
-        RobotOperation.Run<T>("test-robot", (_, services) => services.AddSingleton<ILoggerProvider>(_logs));
+    [Fact]
+    public async Task A_run_abandoned_at_the_shutdown_timeout_exits_with_one()
+    {
+        try
+        {
+            await RunRobot<TokenIgnoringEngine>(services =>
+                services.Configure<HostOptions>(o => o.ShutdownTimeout = TimeSpan.FromMilliseconds(200)));
+        }
+        finally
+        {
+            TokenIgnoringEngine.Release.TrySetResult();
+        }
+
+        Environment.ExitCode.ShouldBe(1);
+        _logs.Messages.ShouldContain(m => m.StartsWith("Robot stopped before its run finished"));
+    }
+
+    [Fact]
+    public async Task A_shutdown_before_the_run_starts_exits_with_one()
+    {
+        await RunRobot<SucceedingEngine>(services => services.AddHostedService<StopsDuringStartup>());
+
+        Environment.ExitCode.ShouldBe(1);
+        _logs.Messages.ShouldContain(m => m.StartsWith("Robot stopped before its run finished"));
+    }
+
+    private Task RunRobot<T>(Action<IServiceCollection>? configure = null) where T : class, ILikvidoRobotEngine =>
+        RobotOperation.Run<T>("test-robot", (_, services) =>
+        {
+            services.AddSingleton<ILoggerProvider>(_logs);
+            configure?.Invoke(services);
+        });
 
     private sealed class SucceedingEngine : ILikvidoRobotEngine
     {
@@ -86,6 +116,33 @@ public sealed class RobotOperationExitCodeTests : IDisposable
             lifetime.StopApplication();
             await Task.Delay(Timeout.Infinite, cancellationToken);
         }
+    }
+
+    private sealed class TokenIgnoringEngine(IHostApplicationLifetime lifetime) : ILikvidoRobotEngine
+    {
+        public static readonly TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        public async Task Run(CancellationToken cancellationToken)
+        {
+            lifetime.StopApplication();
+            await Release.Task;
+        }
+    }
+
+    // Starting runs before any hosted service starts, so the robot's engine never gets to run
+    private sealed class StopsDuringStartup(IHostApplicationLifetime lifetime) : IHostedLifecycleService
+    {
+        public Task StartingAsync(CancellationToken cancellationToken)
+        {
+            lifetime.StopApplication();
+            return Task.CompletedTask;
+        }
+
+        public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StartedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StoppingAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task StoppedAsync(CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class CapturingLoggerProvider : ILoggerProvider
