@@ -34,6 +34,8 @@ public static class RobotOperation
         builder.Services.TryAddNullPrincipalProvider();
         builder.Services.AddSingleton(new AppMetadata { AppName = robotName, OperationName = operationName });
         builder.Services.AddScoped<T>();
+        var runState = new RobotRunState();
+        builder.Services.AddSingleton(runState);
         builder.Services.AddHostedService<RobotHostedService<T>>();
 
         // Register the robot passed services configuration
@@ -81,6 +83,20 @@ public static class RobotOperation
                 operationName);
             throw;
         }
+
+        // A shutdown during startup, or an engine that ignores its token past the shutdown timeout, leaves the run
+        // unfinished
+        if (!runState.Finished)
+        {
+            logger.LogWarning("Robot stopped before its run finished. Robot: {RobotName}. Operation: {OperationName}",
+                robotName, operationName);
+            Environment.ExitCode = 1;
+        }
+    }
+
+    private sealed class RobotRunState
+    {
+        public volatile bool Finished;
     }
 
     public class RobotHostedService<T>(
@@ -101,17 +117,25 @@ public static class RobotOperation
                 // Stop after launching and finishing since BackgroundService will not finish itself
                 lifetime.StopApplication();
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
+                // A run cut short by shutdown did not finish, so it must not count as a completed Job
+                Environment.ExitCode = 1;
                 lifetime.StopApplication();
             }
             catch (Exception exception)
             {
                 logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
-                throw;
+                // The host only logs a faulted BackgroundService and stops; it never sets an exit code
+                Environment.ExitCode = 1;
+                lifetime.StopApplication();
+            }
+            finally
+            {
+                serviceProvider.GetService<RobotRunState>()?.Finished = true;
             }
         }
     }
