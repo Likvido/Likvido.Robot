@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <!-- ⚠️ Required by xunit v3: a v3 test project is a self-hosting executable rather than a library the
+         runner loads. -->
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- ⚠️ `compile` is in the asset list, unlike the default this package documents. Its build props
+         register GitHubActionsTestLogger.MtpIntegration as a Microsoft.Testing.Platform builder hook and
+         xunit v3 generates a SelfRegisteredExtensions.cs naming that type, so without `compile` the build
+         fails with CS0400 pointing at obj/. -->
+    <PackageReference Include="GitHubActionsTestLogger" Version="3.0.5">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>compile; runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Shouldly" Version="4.3.0" />
+    <PackageReference Include="xunit.v3" Version="4.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Likvido.Robot\Likvido.Robot.csproj" />
+  </ItemGroup>
+
+</Project>

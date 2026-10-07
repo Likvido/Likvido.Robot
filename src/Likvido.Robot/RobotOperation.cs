@@ -101,17 +101,21 @@ public static class RobotOperation
                 // Stop after launching and finishing since BackgroundService will not finish itself
                 lifetime.StopApplication();
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 logger.LogWarning("Job was cancelled. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
+                // A run cut short by shutdown did not finish, so it must not count as a completed Job
+                Environment.ExitCode = 1;
                 lifetime.StopApplication();
             }
             catch (Exception exception)
             {
                 logger.LogError(exception, "Job run failed. Robot: {RobotName}. Operation: {OperationName}",
                     appMetadata.AppName, appMetadata.OperationName);
-                throw;
+                // The host only logs a faulted BackgroundService and stops; it never sets an exit code
+                Environment.ExitCode = 1;
+                lifetime.StopApplication();
             }
         }
     }

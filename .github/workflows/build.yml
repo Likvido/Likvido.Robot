@@ -1,0 +1,32 @@
+name: Build and test
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.x
+
+      # ⚠️ `--solution` is required: global.json opts this repo into the Microsoft.Testing.Platform
+      # runner, and that `dotnet test` rejects a bare solution path as a positional argument.
+      - name: Test
+        run: dotnet test --solution src/Likvido.Robot.sln --configuration Release

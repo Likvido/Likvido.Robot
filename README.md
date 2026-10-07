@@ -24,3 +24,9 @@ await RobotOperation.Run<MyRobotEngine>(
     }
 );
 ```
+
+## Exit code
+
+The process exits with code `1` when the run does not finish: when `Run` throws, or when a shutdown (such as
+SIGTERM) cancels the token and `Run` throws an `OperationCanceledException` because of it. Kubernetes and
+Argo CD then see the Job as failed. A run that returns normally exits with code `0`, even after a shutdown.
