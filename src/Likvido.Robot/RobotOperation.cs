@@ -67,30 +67,47 @@ public static class RobotOperation
         logger.LogInformation("Starting robot. Robot: {RobotName}. Operation: {OperationName}", robotName,
             operationName);
 
+        // Not RunAsync: it disposes the host, and with it the log exporter, before the lines below are written
         try
         {
-            await host.RunAsync().ConfigureAwait(false);
-        }
-        catch (OperationCanceledException)
-        {
-            // This is expected during shutdown
-            logger.LogInformation("Robot shutdown completed. Robot: {RobotName}. Operation: {OperationName}", robotName,
-                operationName);
-        }
-        catch (Exception ex)
-        {
-            logger.LogError(ex, "Robot failed. Robot: {RobotName}. Operation: {OperationName}", robotName,
-                operationName);
-            throw;
-        }
+            try
+            {
+                await host.StartAsync().ConfigureAwait(false);
+                await host.WaitForShutdownAsync().ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                // This is expected during shutdown
+                logger.LogInformation("Robot shutdown completed. Robot: {RobotName}. Operation: {OperationName}",
+                    robotName, operationName);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Robot failed. Robot: {RobotName}. Operation: {OperationName}", robotName,
+                    operationName);
+                throw;
+            }
 
-        // A shutdown during startup, or an engine that ignores its token past the shutdown timeout, leaves the run
-        // unfinished
-        if (!runState.Finished)
+            // A shutdown during startup, or an engine that ignores its token past the shutdown timeout, leaves the
+            // run unfinished
+            if (!runState.Finished)
+            {
+                logger.LogWarning(
+                    "Robot stopped before its run finished. Robot: {RobotName}. Operation: {OperationName}",
+                    robotName, operationName);
+                Environment.ExitCode = 1;
+            }
+        }
+        finally
         {
-            logger.LogWarning("Robot stopped before its run finished. Robot: {RobotName}. Operation: {OperationName}",
-                robotName, operationName);
-            Environment.ExitCode = 1;
+            if (host is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            }
+            else
+            {
+                host.Dispose();
+            }
         }
     }
 
