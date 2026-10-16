@@ -1,0 +1,28 @@
+name: API compatibility
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-compatibility:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.x
+
+      - name: Compare the public API with nuget.org
+        uses: likvido/action-nuget/api-compatibility@121e8c5f28f10cfe614e37f6e616383c08d7e6c7
+        with:
+          projects: |
+            src/Likvido.Robot/Likvido.Robot.csproj
