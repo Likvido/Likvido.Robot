@@ -22,7 +22,7 @@ jobs:
           dotnet-version: 10.x
 
       - name: Compare the public API with nuget.org
-        uses: likvido/action-nuget/api-compatibility@121e8c5f28f10cfe614e37f6e616383c08d7e6c7
+        uses: likvido/action-nuget/api-compatibility@b072aec41ec2747bccc20f35d2260a8ea4aea1b0
         with:
           projects: |
             src/Likvido.Robot/Likvido.Robot.csproj
