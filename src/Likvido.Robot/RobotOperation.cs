@@ -12,7 +12,7 @@ namespace Likvido.Robot;
 [PublicAPI]
 public static class RobotOperation
 {
-    public static async Task Run<T>(
+    internal static async Task Run<T>(
         string robotName,
         Action<IConfiguration, IServiceCollection> configureServices)
         where T : class, ILikvidoRobotEngine
