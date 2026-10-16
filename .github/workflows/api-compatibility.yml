@@ -1,0 +1,30 @@
+name: API compatibility
+
+# Compares the library's public API with the newest version of its package on nuget.org, so a
+# breaking change is not published as a patch version. See likvido/action-nuget's README.
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  api-compatibility:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.x
+
+      - name: Compare the public API with nuget.org
+        uses: likvido/action-nuget/api-compatibility@v3
+        with:
+          projects: |
+            src/Likvido.Robot/Likvido.Robot.csproj
