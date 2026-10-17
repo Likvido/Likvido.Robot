@@ -30,7 +30,7 @@ jobs:
           dotnet-version: 10.x
 
       - name: Publish NuGet
-        uses: likvido/action-nuget@v2
+        uses: likvido/action-nuget@v3
         with:
           project: src/Likvido.Robot/Likvido.Robot.csproj
           nuget-user: ${{ vars.NUGET_USER }}
