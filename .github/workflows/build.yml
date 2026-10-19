@@ -26,7 +26,7 @@ jobs:
         with:
           dotnet-version: 10.x
 
-      # ⚠️ `--solution` is required: global.json opts this repo into the Microsoft.Testing.Platform
-      # runner, and that `dotnet test` rejects a bare solution path as a positional argument.
       - name: Test
-        run: dotnet test --solution src/Likvido.Robot.sln --configuration Release
+        uses: likvido/action-test@700175fd1903d5b8eb229b4658d201250275d664
+        with:
+          test-target: src/Likvido.Robot.sln
