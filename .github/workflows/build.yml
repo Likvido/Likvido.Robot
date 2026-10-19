@@ -27,6 +27,6 @@ jobs:
           dotnet-version: 10.x
 
       - name: Test
-        uses: likvido/action-test@700175fd1903d5b8eb229b4658d201250275d664
+        uses: likvido/action-test@3c6e9f44e02b6b7018d9dfd3283f84946a78e9ef
         with:
           test-target: src/Likvido.Robot.sln
