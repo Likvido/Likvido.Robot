@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFrameworks>net10.0;net11.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -13,12 +13,20 @@
 
     <ItemGroup>
       <PackageReference Include="JetBrains.Annotations" Version="2026.2.0" />
-      <PackageReference Include="Likvido.Identity" Version="2.0.4" />
-      <PackageReference Include="Likvido.Metadata" Version="1.0.2" />
-      <PackageReference Include="Likvido.Telemetry" Version="1.0.5" />
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
-      <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
+      <PackageReference Include="Likvido.Identity" Version="2.1.0" />
+      <PackageReference Include="Likvido.Metadata" Version="1.1.0" />
+      <PackageReference Include="Likvido.Telemetry" Version="1.1.0" />
     </ItemGroup>
 
+    <!-- Packages that version with the runtime: the net10.0 build references 10.0.x, the net11.0 build 11.0.x. -->
+    <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.14" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.14" />
+    </ItemGroup>
+    <ItemGroup Condition="'$(TargetFramework)' == 'net11.0'">
+        <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="11.0.0" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="11.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="11.0.0" />
+    </ItemGroup>
 </Project>
