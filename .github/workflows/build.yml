@@ -24,7 +24,10 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
         with:
-          dotnet-version: 10.x
+          # The .NET 11 SDK builds both targets; the .NET 10 runtime runs the net10.0 tests.
+          dotnet-version: |
+            10.x
+            11.x
 
       # ⚠️ `--solution` is required: global.json opts this repo into the Microsoft.Testing.Platform
       # runner, and that `dotnet test` rejects a bare solution path as a positional argument.
